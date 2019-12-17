@@ -18,6 +18,8 @@ import tools as t
 
 
 
+multi_gpu = False
+
 class CGAN():
 
     def __init__(self):
@@ -33,9 +35,9 @@ class CGAN():
         optimizer = Adam(0.0002, 0.5)
         # Build and compile the discriminator
         self.discriminator = self.build_discriminator()
-        multi_gpu = True
+        
         if multi_gpu == True:
-            self.discriminator = multi_gpu_model(self.discriminator , gpus=4)
+            self.discriminator = multi_gpu_model(self.discriminator)
 
         self.discriminator.compile(loss='binary_crossentropy',
             optimizer=optimizer,
@@ -60,7 +62,7 @@ class CGAN():
         # Trains generator to fool discriminator
         self.combined = Model([noise, label], valid)
         if multi_gpu == True:
-            self.combined = multi_gpu_model(self.combined , gpus=4)
+            self.combined = multi_gpu_model(self.combined )
 
         self.combined.compile(loss=['binary_crossentropy'], optimizer=optimizer)
 
@@ -207,11 +209,14 @@ class CGAN():
                 axs[i,j].title.set_text(t.categories[cnt])
                 axs[i,j].axis('off')
                 cnt += 1
-        fig.title.set_text('epochs = '+ str(epoch))
+        #fig.title.set_text('epochs = '+ str(epoch))
         fig.savefig( os.path.join(os.getcwd(), 'CGAN', 'images', "cifar10_%d.png" % epoch) )
         plt.close()
 
 
 if __name__ == '__main__':
     cgan = CGAN()
-    cgan.train(epochs=101, batch_size=32, sample_interval=10)
+    if multi_gpu == True:
+        cgan.train(epochs=101, batch_size=32*8, sample_interval=10)
+    else:
+        cgan.train(epochs=101, batch_size=32, sample_interval=10)
