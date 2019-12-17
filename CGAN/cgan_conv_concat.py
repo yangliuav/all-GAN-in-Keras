@@ -1,7 +1,7 @@
 from __future__ import print_function, division
 
 from keras.datasets import cifar10
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, multiply
+from keras.layers import Input, Dense, Reshape, Flatten, Dropout, multiply, Concatenate
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D, Embedding
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import sys
 import numpy as np
 import os 
+from keras.utils import multi_gpu_model
 
 sys.path.append( os.path.join(os.getcwd(), 'utils'))
 import tools as t
@@ -25,11 +26,17 @@ class CGAN():
         self.img_cols = 32
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
+
         self.latent_dim = 100
         self.num_classes = 10
+        
         optimizer = Adam(0.0002, 0.5)
         # Build and compile the discriminator
         self.discriminator = self.build_discriminator()
+        multi_gpu = True
+        if multi_gpu == True:
+            self.discriminator = multi_gpu_model(self.discriminator , gpus=4)
+
         self.discriminator.compile(loss='binary_crossentropy',
             optimizer=optimizer,
             metrics=['accuracy'])
@@ -52,31 +59,37 @@ class CGAN():
         # The combined model  (stacked generator and discriminator)
         # Trains generator to fool discriminator
         self.combined = Model([noise, label], valid)
+        if multi_gpu == True:
+            self.combined = multi_gpu_model(self.combined , gpus=4)
+
         self.combined.compile(loss=['binary_crossentropy'], optimizer=optimizer)
 
     def build_generator(self):
-        model = Sequential()
-
-        model.add(Dense(256, input_dim=self.latent_dim))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(Dense(512))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(Dense(1024))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(Dense(np.prod(self.img_shape), activation='tanh'))
-        model.add(Reshape(self.img_shape))
-
-        model.summary()
-
         noise = Input(shape=(self.latent_dim,))
-        label = Input(shape=(1,), dtype='int32')
-        label_embedding = Flatten()(Embedding(self.num_classes, self.latent_dim)(label))
+        x1 = Dense(128 * 8 * 8, activation="relu", input_dim=self.latent_dim)(noise)
+        x1 = Reshape((8, 8, 128))(x1)
 
-        model_input = multiply([noise, label_embedding])
-        img = model(model_input)
+        label = Input(shape=(1,), dtype='int32')
+        label_embedding = Flatten()(Embedding(self.num_classes, 8 * 8)(label))
+        x2 = Dense(8 * 8, activation="relu")(label_embedding)
+        x2 = Reshape((8, 8, 1))(x2)
+
+        x = Concatenate()([x1,x2])
+        x = LeakyReLU(alpha=0.2)(x)
+        x = BatchNormalization(momentum=0.8)(x)
+        
+        x = UpSampling2D()(x)
+        x = Conv2D(128, kernel_size=3, padding="same")(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = BatchNormalization(momentum=0.8)(x)
+
+        x = UpSampling2D()(x)
+        x = Conv2D(64, kernel_size=3, padding="same")(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = BatchNormalization(momentum=0.8)(x)
+
+        x = Conv2D(self.channels, kernel_size=3, padding="same")(x)
+        img = Activation("tanh")(x)
 
         return Model([noise, label], img)
 
@@ -84,29 +97,37 @@ class CGAN():
 
     def build_discriminator(self):
 
-        model = Sequential()
-
-        model.add(Dense(512, input_dim=np.prod(self.img_shape)))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dense(512))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.4))
-        model.add(Dense(512))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.4))
-        model.add(Dense(1, activation='sigmoid'))
-
-        model.summary()
-
         img = Input(shape=self.img_shape)
+
         label = Input(shape=(1,), dtype='int32')
+        label_embedding = Flatten()(Embedding(self.num_classes, 32 * 32 * 3)(label))
+        x2 = Dense(32 * 32 * 3, activation="relu")(label_embedding)
+        x2 = Reshape((32, 32, 3))(x2)
+        x = Concatenate()([img,x2])
 
-        label_embedding = Flatten()(Embedding(self.num_classes, np.prod(self.img_shape))(label))
-        flat_img = Flatten()(img)
-        model_input = multiply([flat_img, label_embedding])
-        validity = model(model_input)
 
-        return Model([img, label], validity)
+        x = Conv2D(32, kernel_size=3, strides=2, input_shape=self.img_shape, padding="same")(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = Dropout(0.25)(x)
+        x = Conv2D(64, kernel_size=3, strides=2, padding="same")(x)
+        x = ZeroPadding2D(padding=((0,1),(0,1)))(x)
+        x = BatchNormalization(momentum=0.8)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = Dropout(0.25)(x)
+        x = Conv2D(128, kernel_size=3, strides=2, padding="same")(x)
+        x = BatchNormalization(momentum=0.8)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = Dropout(0.25)(x)
+        x = Conv2D(256, kernel_size=3, strides=1, padding="same")(x)
+        x = BatchNormalization(momentum=0.8)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = Dropout(0.25)(x)
+        x = Flatten()(x)
+        x = Dense(1, activation='sigmoid')(x)
+
+        #model.summary()
+
+        return Model([img, label], x)
 
     def train(self, epochs, batch_size=128, sample_interval=50):
 
@@ -183,8 +204,10 @@ class CGAN():
         for i in range(r):
             for j in range(c):
                 axs[i,j].imshow(gen_imgs[cnt, :,:, :])
+                axs[i,j].title.set_text(t.categories[cnt])
                 axs[i,j].axis('off')
-                cnt += 1     
+                cnt += 1
+        fig.title.set_text('epochs = '+ str(epoch))
         fig.savefig( os.path.join(os.getcwd(), 'CGAN', 'images', "cifar10_%d.png" % epoch) )
         plt.close()
 

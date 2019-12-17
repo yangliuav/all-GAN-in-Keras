@@ -25,8 +25,10 @@ class CGAN():
         self.img_cols = 32
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
+
         self.latent_dim = 100
         self.num_classes = 10
+        
         optimizer = Adam(0.0002, 0.5)
         # Build and compile the discriminator
         self.discriminator = self.build_discriminator()
@@ -57,17 +59,24 @@ class CGAN():
     def build_generator(self):
         model = Sequential()
 
-        model.add(Dense(256, input_dim=self.latent_dim))
+        model.add(Dense(128 * 8 * 8, activation="relu", input_dim=self.latent_dim))
+        model.add(Reshape((8, 8, 128)))
+
         model.add(LeakyReLU(alpha=0.2))
         model.add(BatchNormalization(momentum=0.8))
-        model.add(Dense(512))
+        
+        model.add(UpSampling2D())
+        model.add(Conv2D(128, kernel_size=3, padding="same"))
         model.add(LeakyReLU(alpha=0.2))
         model.add(BatchNormalization(momentum=0.8))
-        model.add(Dense(1024))
+
+        model.add(UpSampling2D())
+        model.add(Conv2D(64, kernel_size=3, padding="same"))
         model.add(LeakyReLU(alpha=0.2))
         model.add(BatchNormalization(momentum=0.8))
-        model.add(Dense(np.prod(self.img_shape), activation='tanh'))
-        model.add(Reshape(self.img_shape))
+
+        model.add(Conv2D(self.channels, kernel_size=3, padding="same"))
+        model.add(Activation("tanh"))
 
         model.summary()
 
@@ -86,14 +95,23 @@ class CGAN():
 
         model = Sequential()
 
-        model.add(Dense(512, input_dim=np.prod(self.img_shape)))
+        model.add(Conv2D(32, kernel_size=3, strides=2, input_shape=self.img_shape, padding="same"))
         model.add(LeakyReLU(alpha=0.2))
-        model.add(Dense(512))
+        model.add(Dropout(0.25))
+        model.add(Conv2D(64, kernel_size=3, strides=2, padding="same"))
+        model.add(ZeroPadding2D(padding=((0,1),(0,1))))
+        model.add(BatchNormalization(momentum=0.8))
         model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.4))
-        model.add(Dense(512))
+        model.add(Dropout(0.25))
+        model.add(Conv2D(128, kernel_size=3, strides=2, padding="same"))
+        model.add(BatchNormalization(momentum=0.8))
         model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.4))
+        model.add(Dropout(0.25))
+        model.add(Conv2D(256, kernel_size=3, strides=1, padding="same"))
+        model.add(BatchNormalization(momentum=0.8))
+        model.add(LeakyReLU(alpha=0.2))
+        model.add(Dropout(0.25))
+        model.add(Flatten())
         model.add(Dense(1, activation='sigmoid'))
 
         model.summary()
@@ -104,6 +122,7 @@ class CGAN():
         label_embedding = Flatten()(Embedding(self.num_classes, np.prod(self.img_shape))(label))
         flat_img = Flatten()(img)
         model_input = multiply([flat_img, label_embedding])
+        model_input = Reshape(self.img_shape)(model_input)
         validity = model(model_input)
 
         return Model([img, label], validity)
@@ -184,7 +203,7 @@ class CGAN():
             for j in range(c):
                 axs[i,j].imshow(gen_imgs[cnt, :,:, :])
                 axs[i,j].axis('off')
-                cnt += 1     
+                cnt += 1
         fig.savefig( os.path.join(os.getcwd(), 'CGAN', 'images', "cifar10_%d.png" % epoch) )
         plt.close()
 

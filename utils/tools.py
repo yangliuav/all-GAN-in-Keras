@@ -12,3 +12,14 @@ if(sysstr =="Windows"):
     pass
 else:
     set_freer_gpu()
+
+categories = ['airplane','automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+
+
+
+
+
+
+
+
+

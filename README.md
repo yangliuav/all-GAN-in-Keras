@@ -29,4 +29,16 @@ Conditional Generative Adversarial Nets.
 
 paper: https://arxiv.org/abs/1411.1784
 
+![ezgif.com-gif-maker (1)](https://i.imgur.com/BwMtZpd.gif)
+
+Since the original version is implemented by the Dense layers (full-connection), the output image is noisy. Now, we change to Conv layers.
+
+![ezgif.com-gif-maker (2)](https://i.imgur.com/7RgnDDs.gif)
+
+How about this result? More worst? THis is because the fusion step of the label and noise is implemented by *multiply*. Let we change to Concatenate layer
+
+![ezgif.com-gif-maker (3)](https://i.imgur.com/Wh8M1A7.gif)
+
+
+
 # Is there any other GAN I can try?
