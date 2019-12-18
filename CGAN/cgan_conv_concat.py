@@ -29,7 +29,7 @@ class CGAN():
         self.channels = 3
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
-        self.latent_dim = 100
+        self.latent_dim = 200
         self.num_classes = 10
         
         optimizer = Adam(0.0002, 0.5)
@@ -80,7 +80,7 @@ class CGAN():
         x = LeakyReLU(alpha=0.2)(x)
         x = BatchNormalization(momentum=0.8)(x)
         
-        x = UpSampling2D()(x)
+        x = UpSampling2D()(x) # Conv2DTranspose
         x = Conv2D(128, kernel_size=3, padding="same")(x)
         x = LeakyReLU(alpha=0.2)(x)
         x = BatchNormalization(momentum=0.8)(x)
@@ -110,7 +110,7 @@ class CGAN():
 
         x = Conv2D(32, kernel_size=3, strides=2, input_shape=self.img_shape, padding="same")(x)
         x = LeakyReLU(alpha=0.2)(x)
-        x = Dropout(0.25)(x)
+        x = Dropout(0.25)(x) # 0.5
         x = Conv2D(64, kernel_size=3, strides=2, padding="same")(x)
         x = ZeroPadding2D(padding=((0,1),(0,1)))(x)
         x = BatchNormalization(momentum=0.8)(x)
@@ -156,7 +156,7 @@ class CGAN():
                 imgs, labels = x_train[sub_idx], y_train[sub_idx]
 
                 # Sample noise as generator input
-                noise = np.random.normal(0, 1, (batch_size, 100))
+                noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
 
                 # Generate a half batch of new images
                 gen_imgs = self.generator.predict([noise, labels])
@@ -195,7 +195,7 @@ class CGAN():
     def sample_images(self, epoch):
 
         r, c = 2, 5
-        noise = np.random.normal(0, 1, (r * c, 100))
+        noise = np.random.normal(0, 1, (r * c, self.latent_dim))
         sampled_labels = np.arange(0, 10).reshape(-1, 1)
         gen_imgs = self.generator.predict([noise, sampled_labels])
 
@@ -209,8 +209,8 @@ class CGAN():
                 axs[i,j].title.set_text(t.categories[cnt])
                 axs[i,j].axis('off')
                 cnt += 1
-        #fig.title.set_text('epochs = '+ str(epoch))
-        fig.savefig( os.path.join(os.getcwd(), 'CGAN', 'images', "cifar10_%d.png" % epoch) )
+        fig.suptitle('epochs = '+ str(epoch))
+        fig.savefig( os.path.join(os.getcwd(), 'CGAN', 'images', "cifar10_%d_%d.png" % (self.latent_dim, epoch)) )
         plt.close()
 
 
