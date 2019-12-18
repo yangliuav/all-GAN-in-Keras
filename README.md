@@ -39,10 +39,19 @@ How about this result? More worst? THis is because the fusion step of the label 
 
 ![ezgif.com-gif-maker (3)](https://i.imgur.com/Wh8M1A7.gif)
 
+<<<<<<< HEAD
 We have update to the multi-GPU implementation! However, it becomes much slower and the results is improved a little. 
 
 
+=======
+We have update to the multi-GPU implementation! However, it becomes much slower and the results is improved a little.
+>>>>>>> 151ec514673d4df3ac6d3a92186850cf4b8ffb09
 
+![ezgif.com-gif-maker (4)](https://i.imgur.com/ACg1CHD.gif)
+
+### The parameters of CGAN
+#### leght of the noise 
+The origanl is 100. Let we chaneg to 200 and 500.
 
 
 # Is there any other GAN I can try?
