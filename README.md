@@ -42,4 +42,5 @@ How about this result? More worst? THis is because the fusion step of the label 
 We have update to the multi-GPU implementation! However, it becomes much slower and the results is not improved.
 
 
+
 # Is there any other GAN I can try?
