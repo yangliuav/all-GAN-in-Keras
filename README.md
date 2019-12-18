@@ -47,4 +47,5 @@ We have update to the multi-GPU implementation! However, it becomes much slower 
 #### leght of the noise 
 The origanl is 100. Let we chaneg to 200 and 500.
 
+
 # Is there any other GAN I can try?
