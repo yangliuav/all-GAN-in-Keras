@@ -39,7 +39,9 @@ How about this result? More worst? THis is because the fusion step of the label 
 
 ![ezgif.com-gif-maker (3)](https://i.imgur.com/Wh8M1A7.gif)
 
-We have update to the multi-GPU implementation! However, it becomes much slower and the results is not improved.
+We have update to the multi-GPU implementation! However, it becomes much slower and the results is improved a little. 
+
+
 
 
 
