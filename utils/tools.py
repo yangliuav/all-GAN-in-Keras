@@ -12,9 +12,12 @@ def set_freer_gpu():
 
 sysstr = platform.system()
 if(sysstr =="Windows"):
+    multi_gpu = False
     pass
 else:
-    set_freer_gpu()
+    multi_gpu = True
+    pass
+    #set_freer_gpu()
 
 categories = ['airplane','automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
 

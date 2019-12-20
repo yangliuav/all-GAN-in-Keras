@@ -4,7 +4,7 @@ from keras.datasets import cifar10
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout, multiply, Concatenate
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D, Embedding
 from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import UpSampling2D, Conv2D
+from keras.layers.convolutional import UpSampling2D, Conv2D, Conv2DTranspose
 from keras.models import Sequential, Model
 from keras.optimizers import Adam
 import matplotlib.pyplot as plt
@@ -12,6 +12,8 @@ import sys
 import numpy as np
 import os 
 from keras.utils import multi_gpu_model
+from minibatch import MinibatchDiscrimination
+
 
 sys.path.append( os.path.join(os.getcwd(), 'utils'))
 import tools as t
@@ -55,11 +57,11 @@ class ACGAN():
 
         # The discriminator takes generated image as input and determines validity
         # and the label of that image
-        [valid, label] = self.discriminator(img)
+        [valid, target_label] = self.discriminator(img)
 
         # The combined model  (stacked generator and discriminator)
         # Trains generator to fool discriminator
-        self.combined = Model([noise, label], valid)
+        self.combined = Model([noise, label], [valid, target_label])
         if multi_gpu == True:
             self.combined = multi_gpu_model(self.combined )
 
@@ -79,17 +81,19 @@ class ACGAN():
         x = LeakyReLU(alpha=0.2)(x)
         x = BatchNormalization(momentum=0.8)(x)
         
-        x = UpSampling2D()(x)
-        x = Conv2D(128, kernel_size=3, padding="same")(x)
+        x = Conv2DTranspose(128, kernel_size=5, strides=2, padding="same")(x)
+        # x = UpSampling2D()(x)
+        # x = Conv2D(128, kernel_size=3, padding="same")(x)
         x = LeakyReLU(alpha=0.2)(x)
         x = BatchNormalization(momentum=0.8)(x)
 
-        x = UpSampling2D()(x)
-        x = Conv2D(64, kernel_size=3, padding="same")(x)
+        x = Conv2DTranspose(64, kernel_size=5, strides=2, padding="same")(x)
+        # x = UpSampling2D()(x)
+        # x = Conv2D(64, kernel_size=3, padding="same")(x)
         x = LeakyReLU(alpha=0.2)(x)
         x = BatchNormalization(momentum=0.8)(x)
 
-        x = Conv2D(self.channels, kernel_size=3, padding="same")(x)
+        x = Conv2DTranspose(self.channels, kernel_size=5, strides=1, padding="same")(x)
         img = Activation("tanh")(x)
 
         return Model([noise, label], img)
@@ -116,7 +120,7 @@ class ACGAN():
         x = LeakyReLU(alpha=0.2)(x)
         x = Dropout(0.25)(x)
         x = Flatten()(x)
-
+        x = MinibatchDiscrimination(64, 32)(x)
         validity = Dense(1, activation="sigmoid")(x)
         label = Dense(self.num_classes, activation="softmax")(x)
 
@@ -146,17 +150,17 @@ class ACGAN():
             np.random.shuffle(idx)
             for i in range(int(x_train.shape[0]/batch_size)):
                 sub_idx = idx[i*batch_size:(i+1)*batch_size]
-                imgs, labels = x_train[sub_idx], y_train[sub_idx]
+                imgs, img_labels = x_train[sub_idx], y_train[sub_idx]
 
                 # Sample noise as generator input
                 noise = np.random.normal(0, 1, (batch_size, self.latent_dim))
-
+                sampled_labels = np.random.randint(0, 10, (batch_size, 1))
                 # Generate a half batch of new images
-                gen_imgs = self.generator.predict([noise, labels])
+                gen_imgs = self.generator.predict([noise, img_labels])
 
                 # Train the discriminator
-                d_loss_real = self.discriminator.train_on_batch([imgs, labels], valid)
-                d_loss_fake = self.discriminator.train_on_batch([gen_imgs, labels], fake)
+                d_loss_real = self.discriminator.train_on_batch(imgs, [valid, img_labels])
+                d_loss_fake = self.discriminator.train_on_batch(gen_imgs, [fake, sampled_labels])
                 d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
                 # ---------------------
@@ -202,7 +206,7 @@ class ACGAN():
                 axs[i,j].title.set_text(t.categories[cnt])
                 axs[i,j].axis('off')
                 cnt += 1
-        #fig.title.set_text('epochs = '+ str(epoch))
+        fig.suptitle('epochs = '+ str(epoch))
         fig.savefig( os.path.join(os.getcwd(), 'ACGAN', 'images', "cifar10_%d.png" % (epoch)) )
         plt.close()
 
@@ -210,6 +214,6 @@ class ACGAN():
 if __name__ == '__main__':
     acgan = ACGAN()
     if multi_gpu == True:
-        acgan.train(epochs=101, batch_size=32*8, sample_interval=10)
+        acgan.train(epochs=301, batch_size=32*4, sample_interval=10)
     else:
         acgan.train(epochs=101, batch_size=32, sample_interval=10)
