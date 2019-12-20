@@ -39,15 +39,29 @@ How about this result? More worst? THis is because the fusion step of the label 
 
 ![ezgif.com-gif-maker (3)](https://i.imgur.com/Wh8M1A7.gif)
 
-We have update to the multi-GPU implementation! However, it becomes much slower and the results is improved a little. 
+We have update to the multi-GPU implementation! However, it becomes much slower and the results is improved a little.
 
-
-
-![ezgif.com-gif-maker (4)](https://i.imgur.com/ACg1CHD.gif)
+![ezgif.com-gif-maker (3)](https://i.imgur.com/ACg1CHD.gif)
 
 ### The parameters of CGAN
 #### leght of the noise 
 The origanl is 100. Let we chaneg to 200 and 500.
+ <img src="https://i.imgur.com/Wh8M1A7.gif" width="200"><img src="https://i.imgur.com/fKveNZI.gif" width="200"> <img src="https://i.imgur.com/AZPOiGZ.gif" width="200"> <img src="https://i.imgur.com/KV2n6Du.gif" width="200"> 
 
+### ACGAN
+![generate with the sampled_labels](https://i.imgur.com/cuMCus0.gif)
+![generate with the img_labels](https://i.imgur.com/YpsM8gJ.gif)
 
+#### replace UpSampling2D by Conv2DTranspose 
+There is nothing different. 
+![ezgif.com-gif-maker (10)](https://i.imgur.com/nb1pXQJ.gif)
+
+### add minibatch
+
+![ezgif.com-gif-maker (11)](https://i.imgur.com/erocre7.gif)
+
+###  Inception 
+https://machinelearningmastery.com/how-to-implement-the-inception-score-from-scratch-for-evaluating-generated-images/
+
+### https://github.com/IShengFang/SpectralNormalizationKeras
 # Is there any other GAN I can try?
